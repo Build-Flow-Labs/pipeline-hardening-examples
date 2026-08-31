@@ -46,8 +46,14 @@ Resolve your own:
 
 ```bash
 ./tools/pin.sh actions/checkout v4
-# -> actions/checkout@<sha>  # v4
+# -> actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+./tools/pin.sh --write .github/workflows/build.yml   # rewrite a whole file
 ```
+
+`pin.sh` uses `git ls-remote`, not the GitHub API, so it needs no token, has
+no rate limit, and works anywhere git does. It handles annotated tags (which
+point at a tag object rather than a commit), lightweight tags, and branches.
 
 This is deliberate. The skill is knowing how to pin and how to keep pins
 fresh, not memorising one hash. A pinned reference with no update process is a

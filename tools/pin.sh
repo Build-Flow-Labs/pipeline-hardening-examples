@@ -1,98 +1,93 @@
 #!/usr/bin/env bash
 #
-# pin.sh - resolve a GitHub Actions tag to its commit SHA.
+# pin.sh - resolve a GitHub Actions tag to the commit SHA it points at.
 #
 #   ./tools/pin.sh actions/checkout v4
-#       -> actions/checkout@<40-hex>  # v4
+#       -> actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 #
 #   ./tools/pin.sh --write .github/workflows/build.yml
-#       rewrites every mutable `uses:` in the file to a pinned SHA,
-#       appending a `# <tag>` comment. Writes a .bak alongside.
+#       rewrites every mutable `uses:` in the file to a pinned SHA and
+#       appends a `# <tag>` comment. The original is kept as <file>.bak.
 #
-# Uses `gh` if it is authenticated, otherwise curl. Set GITHUB_TOKEN to
-# raise the anonymous rate limit.
+# Uses `git ls-remote`, not the GitHub API: no token, no rate limit, no jq,
+# and it works anywhere git does.
 #
-# Annotated tags resolve to the tag object, so this dereferences to the
-# commit the tag actually points at.
+# Annotated tags point at a tag object rather than a commit. ls-remote
+# exposes the underlying commit as `<ref>^{}`, so we prefer that line when
+# it exists. Lightweight tags have no `^{}` line and resolve directly.
 
 set -uo pipefail
 
 die() { echo "pin.sh: $*" >&2; exit 1; }
 
-api() {
-  local path="$1"
-  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    gh api "$path" 2>/dev/null
-  elif command -v curl >/dev/null 2>&1; then
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-      curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-           -H "Accept: application/vnd.github+json" "https://api.github.com/$path" 2>/dev/null
-    else
-      curl -fsSL -H "Accept: application/vnd.github+json" \
-           "https://api.github.com/$path" 2>/dev/null
-    fi
-  else
-    die "need either gh or curl"
-  fi
-}
+command -v git >/dev/null 2>&1 || die "git not found"
 
-json_field() {  # crude extractor, avoids a jq dependency
-  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -1
-}
-
-# resolve owner/repo tag -> 40-hex commit sha
+# resolve <owner/repo> <tag-or-branch> -> 40-hex commit sha (empty if unknown)
 resolve() {
-  local repo="$1" tag="$2" body sha type
-  body=$(api "repos/$repo/git/ref/tags/$tag") || true
-  [ -z "$body" ] && { echo ""; return 1; }
-  sha=$(printf '%s' "$body" | json_field sha)
-  type=$(printf '%s' "$body" | json_field type)
-  # An annotated tag points at a tag object; dereference to the commit.
-  if [ "$type" = "tag" ]; then
-    body=$(api "repos/$repo/git/tags/$sha") || true
-    sha=$(printf '%s' "$body" | grep -A3 '"object"' | json_field sha)
+  local repo="$1" ref="$2" url out sha
+  url="https://github.com/$repo"
+
+  out=$(git ls-remote "$url" "refs/tags/$ref" "refs/tags/$ref^{}" 2>/dev/null) || true
+
+  # Annotated tag: the ^{} line is the commit. Prefer it.
+  sha=$(printf '%s\n' "$out" | awk '/\^\{\}$/ { print $1; exit }')
+
+  # Lightweight tag: single line, already a commit.
+  [ -z "$sha" ] && sha=$(printf '%s\n' "$out" | awk 'NF { print $1; exit }')
+
+  # Not a tag? Try a branch.
+  if [ -z "$sha" ]; then
+    sha=$(git ls-remote "$url" "refs/heads/$ref" 2>/dev/null | awk 'NF { print $1; exit }')
   fi
-  printf '%s' "$sha"
+
+  # Only ever emit something that looks like a commit.
+  if printf '%s' "$sha" | grep -qE '^[0-9a-f]{40}$'; then
+    printf '%s' "$sha"
+  fi
 }
 
-# ---------------------------------------------------------------- rewrite
+# ---------------------------------------------------------------- --write
 if [ "${1:-}" = "--write" ]; then
   FILE="${2:-}"
   [ -f "$FILE" ] || die "no such file: ${FILE:-<none>}"
-  cp "$FILE" "$FILE.bak"
-  changed=0
 
-  while IFS= read -r line; do
-    # owner/repo@ref where ref is not already a 40-hex SHA
+  cp "$FILE" "$FILE.bak"
+  changed=0 failed=0
+
+  while IFS= read -r line || [ -n "$line" ]; do
     if [[ "$line" =~ uses:[[:space:]]*([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)@([A-Za-z0-9._/-]+) ]]; then
       repo="${BASH_REMATCH[1]}"; ref="${BASH_REMATCH[2]}"
-      if [[ ! "$ref" =~ ^[0-9a-fA-F]{40}$ ]]; then
-        sha=$(resolve "$repo" "$ref")
-        if [ -n "$sha" ]; then
-          # replace the ref, strip any old trailing comment, add the tag back
-          new="${line%%#*}"
-          new="${new/$repo@$ref/$repo@$sha}"
-          new="${new%"${new##*[![:space:]]}"}"   # rtrim
-          printf '%s # %s\n' "$new" "$ref"
-          changed=$((changed + 1))
-          continue
-        else
-          echo "$line"
-          echo "pin.sh: could not resolve $repo@$ref, left unchanged" >&2
-          continue
-        fi
+
+      if [[ "$ref" =~ ^[0-9a-fA-F]{40}$ ]]; then
+        echo "$line"                       # already pinned
+        continue
       fi
+
+      sha=$(resolve "$repo" "$ref")
+      if [ -n "$sha" ]; then
+        new="${line%%#*}"                  # drop any existing trailing comment
+        new="${new/$repo@$ref/$repo@$sha}"
+        new="${new%"${new##*[![:space:]]}"}"   # right-trim
+        printf '%s # %s\n' "$new" "$ref"
+        changed=$((changed + 1))
+      else
+        echo "$line"
+        echo "pin.sh: could not resolve $repo@$ref - left unchanged" >&2
+        failed=$((failed + 1))
+      fi
+      continue
     fi
     echo "$line"
   done < "$FILE.bak" > "$FILE"
 
   echo "pin.sh: pinned $changed reference(s) in $FILE (original at $FILE.bak)" >&2
+  [ "$failed" -gt 0 ] && echo "pin.sh: $failed reference(s) could not be resolved" >&2
   exit 0
 fi
 
 # ---------------------------------------------------------------- single
 [ $# -eq 2 ] || die "usage: pin.sh <owner/repo> <tag>   |   pin.sh --write <workflow.yml>"
-REPO="$1"; TAG="$2"
-SHA=$(resolve "$REPO" "$TAG")
-[ -n "$SHA" ] || die "could not resolve $REPO@$TAG (rate limited? set GITHUB_TOKEN)"
-printf '%s@%s # %s\n' "$REPO" "$SHA" "$TAG"
+
+SHA=$(resolve "$1" "$2")
+[ -n "$SHA" ] || die "could not resolve $1@$2 (does the tag exist? is the repo public?)"
+printf '%s@%s # %s\n' "$1" "$SHA" "$2"
