@@ -8,7 +8,9 @@ From the talk. Each is answerable from your own workflow files this week.
 ### 1. Can anything in our build change without a commit changing?
 
 **Look for:** `uses:` referencing a tag or branch rather than a 40-character
-commit SHA.
+commit SHA — in your workflows, and also in any composite actions of your own
+under `.github/actions`. A workflow whose every step is pinned can still reach
+a movable tag through one of your own actions one hop away.
 
 **A good answer:** every third-party step is SHA-pinned, and Dependabot or
 Renovate raises PRs to move those pins.
@@ -51,7 +53,10 @@ anything needing base-repo privileges touches metadata only.
 ### 4. Which secrets sit in jobs that run third-party code?
 
 **Look for:** secrets defined at workflow or job level rather than on the
-step that consumes them, and `runs-on: self-hosted`.
+step that consumes them; `secrets: inherit` on a called workflow, which hands
+over every secret in the repository at once; and `runs-on: self-hosted`, plus
+any runner label that is not a GitHub-hosted default, since the file does not
+say whether it points at an ephemeral machine.
 
 **A good answer:** the job running third-party actions holds no credentials
 at all; secrets are step-scoped; self-hosted runners are ephemeral and

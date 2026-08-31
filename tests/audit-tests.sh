@@ -42,7 +42,7 @@ has "$out" "Q1 reports mutable references"       "mutable reference(s). See exam
 has "$out" "Q2 reports missing permissions"      "no permissions: block anywhere"
 has "$out" "Q3 reports the pwn request shape"    "untrusted trigger AND checks out fork code"
 has "$out" "Q3 reports the injectable title"     "interpolates attacker-controlled text"
-has "$out" "Q4 reports broadly scoped secrets"   "secret reference(s), some broadly scoped"
+has "$out" "Q4 reports broadly scoped secrets"   "secret reference(s) above step level"
 has "$out" "Q4 reports the self-hosted runner"   "Self-hosted runners:"
 has "$out" "Q5 ties back to the mutable refs"    "would change silently."
 
@@ -77,6 +77,111 @@ has "$out" "Q2 clean" "Every workflow declares its permissions."
 has "$out" "Q3 clean" "No untrusted-context triggers."
 has "$out" "Q4 clean" "No broadly scoped secret definitions found."
 has "$out" "Q5 clean" "Pinned references cannot change without a commit in this repo."
+
+# --- shapes taken from real repositories ----------------------------------
+#
+# Every case below was found in a large public repository while checking what
+# audit.sh gets right and wrong. They are here so the answers stay put.
+mkdir -p "$tmp/real/.github/workflows" "$tmp/real/.github/actions/local"
+
+cat > "$tmp/real/.github/workflows/refs.yml" <<'YAML'
+name: refs
+on: [push]
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262'
+      - uses: docker://hadolint/hadolint:v2.12.0@sha256:30a8fd2e785ab6176eed53f74769e04f125afb2f74a6c52aef7d463583b6d45e
+      - uses: some-org/some-action@v1
+YAML
+
+cat > "$tmp/real/.github/workflows/inherit.yml" <<'YAML'
+name: inherit
+on: [push]
+permissions: {}
+jobs:
+  call:
+    uses: ./.github/workflows/other.yml
+    secrets: inherit
+YAML
+
+cat > "$tmp/real/.github/workflows/env-indirection.yml" <<'YAML'
+name: env-indirection
+on:
+  pull_request_target:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE"
+YAML
+
+cat > "$tmp/real/.github/workflows/into-shell.yml" <<'YAML'
+name: into-shell
+on:
+  pull_request_target:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Reviewing ${{ github.event.pull_request.title }}"
+YAML
+
+cat > "$tmp/real/.github/workflows/comment-trigger.yml" <<'YAML'
+name: comment-trigger
+on:
+  issue_comment:
+    types: [created]
+permissions: {}
+jobs:
+  respond:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+YAML
+
+cat > "$tmp/real/.github/actions/local/action.yml" <<'YAML'
+name: local composite
+runs:
+  using: composite
+  steps:
+    - uses: third-party/action@v3
+      shell: bash
+YAML
+
+out=$(./tools/audit.sh "$tmp/real")
+
+echo
+echo "4. Shapes found in real repositories"
+lacks "$out" "a quoted but SHA-pinned reference is not called mutable" \
+      "uses: 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262'"
+lacks "$out" "a docker:// image pinned by digest is not called mutable" \
+      "docker://hadolint"
+has   "$out" "a genuinely movable tag is still reported"        "some-org/some-action@v1"
+has   "$out" "a mutable ref inside a composite action is found" "third-party/action@v3"
+has   "$out" "composite actions are counted in the header"      "composite action(s)"
+has   "$out" "secrets: inherit is reported"                     "secrets: inherit"
+has   "$out" "issue_comment counts as an untrusted trigger"     "comment-trigger.yml"
+has   "$out" "interpolation into a run: block is reported"      "interpolates attacker-controlled text into a shell"
+
+# The env: indirection is the fix example 03 teaches. Reporting it as an
+# injection teaches people to ignore the finding.
+q3=$(printf '%s' "$out" | sed -n '/^3\./,/^4\./p')
+n_shell=$(printf '%s' "$q3" | grep -c 'interpolates attacker-controlled text into a shell')
+if [ "$n_shell" -eq 1 ]; then
+  ok "the env: indirection pattern is not reported as an injection"
+else
+  bad "expected exactly one injection finding, got $n_shell (env: indirection is the fix, not the bug)"
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then echo "audit.sh tests passed"; else echo "audit.sh tests FAILED"; fi

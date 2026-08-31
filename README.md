@@ -60,6 +60,40 @@ fresh, not memorising one hash. A pinned reference with no update process is a
 snapshot that quietly ages, which is the failure mode
 [`01-pin-actions`](examples/01-pin-actions) exists to prevent.
 
+## How this repository is tested
+
+Every push runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml): every
+workflow is linted with actionlint, every YAML file is parsed, both scripts go
+through shellcheck, and `tools/audit.sh` is run against this repository. If the
+CI here ever stops following the advice in these examples, the build says so.
+
+Two things are worth being precise about.
+
+**The `before.yml` files are meant to fail.** actionlint reports the injectable
+pull request title in `03/before.yml`, and CI asserts that it still does. If
+someone tidies that example, the build breaks — because the example has stopped
+demonstrating the thing it exists to demonstrate.
+
+**The `after.yml` files cannot run as they stand.** Their SHAs are
+placeholders, one action in them is fictional, and they call scripts this
+repository does not contain. CI covers them two ways. It hydrates each one the
+way a reader would — reversing the placeholder using the version comment, then
+running `pin.sh` — and checks the result still resolves upstream and still
+lints. That is the check that notices a version comment going stale. Separately,
+`tools/materialise.sh` generates runnable copies into `.github/workflows`, so
+the shapes execute on real infrastructure.
+
+Those copies are not the examples, and the difference matters. Each one lists
+its substitutions in its own header, because every substitution is a place
+where what runs differs from what is taught. A green smoke run shows the
+skeleton works: the trigger, the permissions model, the job graph, the pinned
+actions, the artifact handoff between jobs, the checksum verification. It shows
+nothing about the substituted lines, which were never real. One example has no
+runnable copy at all — `labeler.yml` would mean granting `pull-requests: write`
+on a `pull_request_target` trigger in this repository, which is exactly the
+thing [`03`](examples/03-quarantine-untrusted-triggers) asks you to think twice
+about.
+
 ## What this does and does not buy you
 
 Pinning removes the **silent substitution** path: the one where a tag you
