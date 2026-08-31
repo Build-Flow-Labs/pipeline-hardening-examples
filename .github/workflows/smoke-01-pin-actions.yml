@@ -16,7 +16,6 @@
 # AFTER: each step is referenced by the commit it actually is.
 # The trailing comment keeps the file readable and tells Dependabot what
 # version the pin corresponds to, so it can raise update PRs.
-#
 name: smoke 01 - pin actions
 on: [push]
 

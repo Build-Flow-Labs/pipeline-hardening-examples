@@ -28,7 +28,7 @@ with a before/after workflow and notes on what the change does and does
 not fix. Plus audit.sh, which answers the talk's five questions against a
 repository, and pin.sh, which resolves tags to commit SHAs."
 
-git remote add origin git@github.com:AminaEmenena/pipeline-hardening-examples.git
+git remote add origin git@github.com:Build-Flow-Labs/pipeline-hardening-examples.git
 git push -u origin main
 ```
 

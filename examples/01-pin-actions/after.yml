@@ -4,10 +4,6 @@
 # AFTER: each step is referenced by the commit it actually is.
 # The trailing comment keeps the file readable and tells Dependabot what
 # version the pin corresponds to, so it can raise update PRs.
-#
-# The SHAs below are PLACEHOLDERS (all zeros), deliberately invalid so they
-# cannot be copied and shipped by accident. Resolve the real ones:
-#     ../../tools/pin.sh actions/checkout v4.2.2
 name: build
 on: [push]
 
