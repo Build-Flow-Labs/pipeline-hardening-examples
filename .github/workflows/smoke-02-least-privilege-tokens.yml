@@ -1,0 +1,45 @@
+# GENERATED - do not edit. Run ./tools/materialise.sh to regenerate.
+#
+# Source: examples/02-least-privilege-tokens/after.yml
+#
+# A runnable copy of that example, so CI can show the shape executing on
+# GitHub's runners. It is not the example itself. Each substitution below
+# is a place where what runs differs from what is taught:
+#
+#   - placeholder SHAs replaced with the real commit for the same version
+#   - the example's placeholder note is dropped, since this copy carries real SHAs
+#   - workflow renamed so it is distinguishable in the Actions tab
+#   - npm ci && npm test runs against tests/fixture, a real but trivial project
+#   - the release script is stubbed; that job is skipped on branch pushes anyway
+#
+# A green run here shows: a job restricted to contents: read can still check out and build, which is the claim the example makes
+# It shows nothing about the substituted lines above.
+# AFTER: nothing by default, granted explicitly where needed.
+#
+# The top-level block sets the floor for every job. Jobs that need more say
+# so, and only for what they need. A reader can now answer "what could this
+# token do?" from the file alone.
+name: smoke 02 - least privilege tokens
+on: [push]
+
+# Applies to every job unless a job overrides it.
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # clone the repository, nothing else
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: cd tests/fixture && npm ci && npm test
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # only this job can create a release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: echo "stub - this repository publishes no releases"

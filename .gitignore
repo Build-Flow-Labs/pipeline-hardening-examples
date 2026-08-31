@@ -1,0 +1,5 @@
+# Written by the fixture build during smoke runs.
+dist/
+
+# tools/pin.sh --write keeps the original alongside the rewritten file.
+*.bak

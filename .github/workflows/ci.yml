@@ -1,0 +1,105 @@
+# CI for this repository, written the way the examples say to write one:
+# nothing granted by default, every action pinned to a commit, and the linter
+# installed from a pinned download whose digest is checked before it runs.
+#
+# tools/audit.sh is run against this repository as part of the build, so if
+# this file ever stops following its own advice, the build says so.
+name: ci
+on:
+  push:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Everything that needs no network beyond installing the linter: YAML
+  # parses, workflows lint, scripts shellcheck. shellcheck is already on the
+  # runner image, so it needs no install step of its own.
+  static:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install actionlint
+        run: ./tests/install-actionlint.sh "$HOME/.local/bin"
+      - name: Put it on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: ./tests/lint.sh
+
+  # The examples still say what they mean: placeholders are still
+  # placeholders, every version comment still resolves upstream, and the
+  # generated smoke copies still match the examples they came from.
+  examples:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install actionlint
+        run: ./tests/install-actionlint.sh "$HOME/.local/bin"
+      - name: Put it on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: ./tests/example-integrity.sh
+      - name: Generated smoke workflows match their examples
+        run: ./tools/materialise.sh --check
+
+  # The two scripts still behave. These reach github.com over git, which is
+  # the point of pin.sh working without a token.
+  tools:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: ./tests/pin-tests.sh
+      - run: ./tests/audit-tests.sh
+
+  # Example 02 claims a job holding contents: read cannot write to the
+  # repository. Everything else here asserts that; this demonstrates it.
+  #
+  # The probe asks the API to create a branch. A read-only token is refused,
+  # which is the pass. If it ever succeeds, the branch is deleted again and
+  # the job fails loudly - a token with more scope than the file declares is
+  # exactly the finding this repository is about.
+  token-scope-proof:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: A contents:read token cannot write
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          PROBE_REF: refs/heads/token-scope-probe-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o response.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/git/refs" \
+            -d "{\"ref\":\"${PROBE_REF}\",\"sha\":\"${HEAD_SHA}\"}")
+
+          if [ "$code" = "403" ] || [ "$code" = "404" ]; then
+            echo "Refused with HTTP $code, as declared. permissions: contents: read holds."
+            exit 0
+          fi
+
+          if [ "$code" = "201" ]; then
+            echo "::error::A job declaring contents: read created a branch. The token has more scope than the workflow declares."
+            curl -sS -X DELETE \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/git/${PROBE_REF}" >/dev/null
+            echo "Probe branch deleted again."
+            exit 1
+          fi
+
+          echo "::error::Unexpected HTTP $code from the API; this probe proved nothing."
+          cat response.json
+          exit 1

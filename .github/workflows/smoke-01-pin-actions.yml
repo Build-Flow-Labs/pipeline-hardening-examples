@@ -1,0 +1,37 @@
+# GENERATED - do not edit. Run ./tools/materialise.sh to regenerate.
+#
+# Source: examples/01-pin-actions/after.yml
+#
+# A runnable copy of that example, so CI can show the shape executing on
+# GitHub's runners. It is not the example itself. Each substitution below
+# is a place where what runs differs from what is taught:
+#
+#   - placeholder SHAs replaced with the real commit for the same version
+#   - the example's placeholder note is dropped, since this copy carries real SHAs
+#   - workflow renamed so it is distinguishable in the Actions tab
+#   - npm ci && npm test runs against tests/fixture, a real but trivial project
+#
+# A green run here shows: a SHA-pinned checkout and setup-node resolve and run, and the pinned commits are fetchable
+# It shows nothing about the substituted lines above.
+# AFTER: each step is referenced by the commit it actually is.
+# The trailing comment keeps the file readable and tells Dependabot what
+# version the pin corresponds to, so it can raise update PRs.
+#
+name: smoke 01 - pin actions
+on: [push]
+
+# Not the subject of this example, but every 'after' file here models
+# good practice throughout. See examples/02-least-privilege-tokens.
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+      - run: cd tests/fixture && npm ci && npm test

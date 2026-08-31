@@ -1,0 +1,47 @@
+# GENERATED - do not edit. Run ./tools/materialise.sh to regenerate.
+#
+# Source: examples/03-quarantine-untrusted-triggers/after.yml
+#
+# A runnable copy of that example, so CI can show the shape executing on
+# GitHub's runners. It is not the example itself. Each substitution below
+# is a place where what runs differs from what is taught:
+#
+#   - placeholder SHAs replaced with the real commit for the same version
+#   - the example's placeholder note is dropped, since this copy carries real SHAs
+#   - workflow renamed so it is distinguishable in the Actions tab
+#   - push added alongside pull_request so the copy runs without needing a PR; pull_request is kept, since not being pull_request_target is the lesson
+#   - npm ci && npm run build runs against tests/fixture, a real but trivial project
+#
+# A green run here shows: the env-indirection pattern for attacker-controlled text runs correctly, and a pull_request job builds with no secrets available
+# It shows nothing about the substituted lines above.
+# AFTER: split along the trust boundary.
+#
+# The rule: the job that reads untrusted input holds no credentials, and
+# the job that holds credentials never runs untrusted code.
+#
+# Untrusted work runs under `pull_request`, which gets no secrets and a
+# read-only token by default. Anything genuinely needing base-repo
+# privileges runs separately, without checking out fork code.
+name: smoke 03 - quarantine untrusted triggers
+on:
+  pull_request:              # NOT pull_request_target
+  push:
+
+permissions: {}
+
+jobs:
+  # Untrusted: builds and tests the contributor's code.
+  # No secrets, read-only token, fork code is fine here.
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: cd tests/fixture && npm ci && npm run build
+
+      # Attacker-controlled text goes through the environment, never
+      # straight into the shell. This is the injection fix.
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "Reviewing $PR_TITLE"

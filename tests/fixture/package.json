@@ -1,0 +1,11 @@
+{
+  "name": "smoke-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal project so the generated smoke workflows have something real to build and test. Not part of the teaching material.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node -e \"const fs=require('fs');fs.mkdirSync('../../dist',{recursive:true});fs.writeFileSync('../../dist/app.txt','built at '+new Date().toISOString()+'\\n')\"",
+    "test": "node -e \"const fs=require('fs');if(!fs.existsSync('package.json'))process.exit(1);console.log('fixture tests passed')\""
+  }
+}

@@ -1,0 +1,13 @@
+# Pins without an update process are snapshots that quietly age, which is the
+# failure mode examples/01-pin-actions exists to prevent. This repository
+# applies its own advice to its own CI.
+#
+# Dependabot only looks at .github/workflows, so it updates this repository's
+# CI and the generated smoke workflows. It does not see examples/, whose SHAs
+# are all-zero placeholders on purpose and must stay that way.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

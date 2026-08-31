@@ -1,0 +1,51 @@
+# GENERATED - do not edit. Run ./tools/materialise.sh to regenerate.
+#
+# Source: examples/05-verify-what-you-consume/verify-download.yml
+#
+# A runnable copy of that example, so CI can show the shape executing on
+# GitHub's runners. It is not the example itself. Each substitution below
+# is a place where what runs differs from what is taught:
+#
+#   - placeholder SHAs replaced with the real commit for the same version
+#   - the example's placeholder note is dropped, since this copy carries real SHAs
+#   - workflow renamed so it is distinguishable in the Actions tab
+#   - the illustrative tool is replaced with a real download (actionlint 1.7.7), since example.com serves nothing
+#   - the illustrative digest is replaced with that download's real sha256
+#   - the illustrative URL is replaced with that download's real location
+#
+# A green run here shows: a real download is verified against a recorded digest before it is unpacked, and a wrong digest would stop the job
+# It shows nothing about the substituted lines above.
+# Verify what you download, before you execute it.
+#
+# `curl | sh` places complete trust in whatever the server returns at the
+# moment you ask. Pin the version, record the digest, and check it.
+name: smoke 05 - verify what you consume
+on: [push]
+
+permissions: {}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # WRONG: whatever the server serves today is what runs.
+      # - run: curl -fsSL https://example.com/install.sh | sh
+
+      # RIGHT: pinned version, known digest, verified before execution.
+      - name: Install tool
+        env:
+          TOOL_VERSION: "1.7.7"
+          TOOL_SHA256: "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o tool.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${TOOL_VERSION}/actionlint_${TOOL_VERSION}_linux_amd64.tar.gz"
+          echo "${TOOL_SHA256}  tool.tar.gz" | sha256sum -c -
+          tar -xzf tool.tar.gz
+
+      # Where a project publishes signatures, check them.
+      # - run: cosign verify-blob --signature tool.sig --certificate tool.pem tool.tar.gz
