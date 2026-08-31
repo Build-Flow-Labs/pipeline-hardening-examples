@@ -1,0 +1,33 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# AFTER: split along the trust boundary.
+#
+# The rule: the job that reads untrusted input holds no credentials, and
+# the job that holds credentials never runs untrusted code.
+#
+# Untrusted work runs under `pull_request`, which gets no secrets and a
+# read-only token by default. Anything genuinely needing base-repo
+# privileges runs separately, without checking out fork code.
+name: pr-check
+on:
+  pull_request:              # NOT pull_request_target
+
+permissions: {}
+
+jobs:
+  # Untrusted: builds and tests the contributor's code.
+  # No secrets, read-only token, fork code is fine here.
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - run: npm ci && npm run build
+
+      # Attacker-controlled text goes through the environment, never
+      # straight into the shell. This is the injection fix.
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "Reviewing $PR_TITLE"

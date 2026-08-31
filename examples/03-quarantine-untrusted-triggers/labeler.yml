@@ -1,0 +1,24 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# If you genuinely need base-repo privileges on a fork PR — labelling,
+# assigning reviewers, posting a comment — keep pull_request_target, but
+# never check out or execute the fork's code in that job.
+#
+# This workflow touches metadata only. There is no `actions/checkout`,
+# no `npm ci`, no `run:` step executing contributor code.
+name: pr-triage
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write     # add labels and a comment
+    steps:
+      - uses: actions/labeler@0000000000000000000000000000000000000000  # v5
+        # No checkout. Nothing from the fork is executed.

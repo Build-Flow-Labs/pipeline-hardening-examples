@@ -1,0 +1,16 @@
+# BEFORE: every third-party step is referenced by a movable label.
+# The publisher, or anyone who compromises the publisher's account, can
+# repoint any of these at different code at any time. Your next run
+# executes it. Nothing changes on your side and nothing looks different.
+name: build
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci && npm test

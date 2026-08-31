@@ -1,0 +1,44 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# AFTER: secrets exist only in the step that consumes them, and the
+# untrusted-heavy work runs on ephemeral GitHub-hosted infrastructure.
+name: build-and-deploy
+on: [push]
+
+permissions: {}
+
+jobs:
+  # No secrets at all. This is where third-party actions run.
+  build:
+    runs-on: ubuntu-latest        # ephemeral, discarded after the job
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - uses: some-org/some-build-action@0000000000000000000000000000000000000000  # v2 - nothing to steal
+      - run: npm ci && npm run build
+      - uses: actions/upload-artifact@0000000000000000000000000000000000000000  # v4
+        with:
+          name: dist
+          path: dist/
+
+  # Secrets appear here, scoped to the single step that needs them, and
+  # this job runs no third-party actions.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write           # prefer OIDC over long-lived keys
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - uses: actions/download-artifact@0000000000000000000000000000000000000000  # v4
+        with:
+          name: dist
+          path: dist/
+      - name: Deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: ./deploy.sh

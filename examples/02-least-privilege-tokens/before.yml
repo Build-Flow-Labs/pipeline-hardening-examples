@@ -1,0 +1,18 @@
+# BEFORE: no permissions block anywhere.
+#
+# The built-in GITHUB_TOKEN falls back to the repository or organisation
+# default. If that default is permissive, every step in every job here —
+# including third-party code you did not write — holds a token that can
+# push commits, move tags, and publish releases.
+#
+# You cannot tell which it is by reading this file. That is the point:
+# the effective scope lives in a setting, not in the workflow.
+name: build
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm test

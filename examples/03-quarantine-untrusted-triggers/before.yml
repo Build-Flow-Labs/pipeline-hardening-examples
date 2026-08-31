@@ -1,0 +1,30 @@
+# BEFORE: the classic "pwn request".
+#
+# pull_request_target runs in the context of the BASE repository, with its
+# secrets and its token, but this workflow then checks out the FORK's code
+# and executes it. Untrusted code and credentials meet in the same job.
+#
+# Two live incidents used exactly this shape:
+#   Nx / s1ngularity (Aug 2025)  - an unsanitised PR *title* interpolated
+#                                  into a run: step, reaching the publish
+#                                  pipeline and leaking the npm token
+#   hackerbot-claw   (Feb 2026)  - a fork PR against a workflow of this
+#                                  shape exfiltrated a maintainer token
+name: pr-check
+on:
+  pull_request_target:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # Checking out the fork's HEAD is what makes this dangerous.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Untrusted code, running with the base repo's credentials.
+      - run: npm ci && npm run build
+
+      # Direct interpolation of attacker-controlled text into a shell.
+      - run: echo "Reviewing ${{ github.event.pull_request.title }}"

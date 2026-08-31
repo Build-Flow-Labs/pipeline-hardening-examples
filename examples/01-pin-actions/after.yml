@@ -1,0 +1,28 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# AFTER: each step is referenced by the commit it actually is.
+# The trailing comment keeps the file readable and tells Dependabot what
+# version the pin corresponds to, so it can raise update PRs.
+#
+# The SHAs below are PLACEHOLDERS (all zeros), deliberately invalid so they
+# cannot be copied and shipped by accident. Resolve the real ones:
+#     ../../tools/pin.sh actions/checkout v4.2.2
+name: build
+on: [push]
+
+# Not the subject of this example, but every 'after' file here models
+# good practice throughout. See examples/02-least-privilege-tokens.
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000 # v4.2.2
+      - uses: actions/setup-node@0000000000000000000000000000000000000000 # v4.1.0
+        with:
+          node-version: 20
+      - run: npm ci && npm test

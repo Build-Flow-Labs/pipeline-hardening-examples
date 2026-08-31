@@ -1,0 +1,32 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# AFTER: nothing by default, granted explicitly where needed.
+#
+# The top-level block sets the floor for every job. Jobs that need more say
+# so, and only for what they need. A reader can now answer "what could this
+# token do?" from the file alone.
+name: build
+on: [push]
+
+# Applies to every job unless a job overrides it.
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # clone the repository, nothing else
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - run: npm ci && npm test
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # only this job can create a release
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - run: ./scripts/publish-release.sh

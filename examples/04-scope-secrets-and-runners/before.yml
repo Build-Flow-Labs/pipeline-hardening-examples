@@ -1,0 +1,28 @@
+# BEFORE: every secret is available to every step in the job, including
+# third-party actions, and the job runs on a long-lived self-hosted runner.
+#
+# A compromised step here reads the whole environment. It can also leave
+# something behind on the runner: a default self-hosted runner is
+# non-ephemeral, so a background process outlives the job and the next
+# workflow lands on the same machine.
+#
+# That is the PyTorch finding (disclosed Jan 2024): researchers used a
+# non-ephemeral self-hosted runner reachable from fork PRs to establish
+# persistence and demonstrate they could alter releases.
+name: build-and-deploy
+on: [push]
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: some-org/some-build-action@v2   # sees all four secrets
+      - run: npm ci && npm run build
+      - run: ./deploy.sh

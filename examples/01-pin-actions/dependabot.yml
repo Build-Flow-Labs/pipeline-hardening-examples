@@ -1,0 +1,15 @@
+# .github/dependabot.yml
+#
+# Without this, a pin is a snapshot that quietly ages. With it, the bot
+# raises a pull request when a pinned action publishes a new version, and
+# rewrites the SHA and the trailing version comment for you.
+#
+# This is the reconciliation no compliance framework describes: frameworks
+# tell you to keep components current, which pushes you toward floating
+# refs. Pinning plus automated updates gets you currency AND immutability.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

@@ -1,0 +1,37 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# Verify what you download, before you execute it.
+#
+# `curl | sh` places complete trust in whatever the server returns at the
+# moment you ask. Pin the version, record the digest, and check it.
+name: install-tooling
+on: [push]
+
+permissions: {}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+
+      # WRONG: whatever the server serves today is what runs.
+      # - run: curl -fsSL https://example.com/install.sh | sh
+
+      # RIGHT: pinned version, known digest, verified before execution.
+      - name: Install tool
+        env:
+          TOOL_VERSION: "1.9.2"
+          TOOL_SHA256: "9f2c1e6b0a4d8e7c3b5a1f0d2e4c6b8a0d3f5e7c9b1a3d5f7e9c1b3a5d7f9e1c"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o tool.tar.gz \
+            "https://example.com/releases/v${TOOL_VERSION}/tool-linux-amd64.tar.gz"
+          echo "${TOOL_SHA256}  tool.tar.gz" | sha256sum -c -
+          tar -xzf tool.tar.gz
+
+      # Where a project publishes signatures, check them.
+      # - run: cosign verify-blob --signature tool.sig --certificate tool.pem tool.tar.gz
