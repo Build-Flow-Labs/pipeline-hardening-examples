@@ -1,0 +1,49 @@
+# NOTE: the SHAs below are PLACEHOLDERS (all zeros) so they cannot be
+# copied and shipped by accident. Resolve the real ones before use:
+#     ../../tools/pin.sh --write this-file.yml
+# The other direction. verify-download.yml is about checking what you pull
+# in; this is about letting the people who depend on you do the same.
+#
+# attest-build-provenance signs a statement: this artifact, with this digest,
+# was produced by this workflow, in this repository, at this commit. A
+# consumer checks it with
+#     gh attestation verify dist/app.tar.gz --repo <owner>/<repo>
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+jobs:
+  # Runs the build, and therefore runs code this repository did not write.
+  # It holds nothing worth stealing.
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@0000000000000000000000000000000000000000  # v4
+      - run: npm ci && npm run build
+      - uses: actions/upload-artifact@0000000000000000000000000000000000000000  # v4
+        with:
+          name: dist
+          path: dist/
+
+  # Holds the ability to sign things as this repository, and runs no build of
+  # its own. Example 04 applied to a credential that is not a secret.
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write        # the OIDC identity the signature is bound to
+      attestations: write    # record the attestation against this repository
+      contents: read
+    steps:
+      - uses: actions/download-artifact@0000000000000000000000000000000000000000  # v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/attest-build-provenance@0000000000000000000000000000000000000000  # v4
+        with:
+          subject-path: 'dist/**'

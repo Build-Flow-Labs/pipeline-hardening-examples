@@ -17,7 +17,7 @@ Everything here is configuration. None of it requires buying anything.
 | [`examples/02-least-privilege-tokens`](examples/02-least-privilege-tokens) | Default the build token to read-only, grant write per job | "Default tokens to read-only" |
 | [`examples/03-quarantine-untrusted-triggers`](examples/03-quarantine-untrusted-triggers) | Split `pull_request_target` so untrusted code never meets credentials | "Quarantine risky triggers" |
 | [`examples/04-scope-secrets-and-runners`](examples/04-scope-secrets-and-runners) | Put secrets only in the jobs that consume them; constrain self-hosted runners | "Scope secrets and runners" |
-| [`examples/05-verify-what-you-consume`](examples/05-verify-what-you-consume) | Checksum-verify downloads; alert on tag movement | "Verify what you consume" |
+| [`examples/05-verify-what-you-consume`](examples/05-verify-what-you-consume) | Checksum-verify downloads; attest what you publish; alert on tag movement | "Verify what you consume" |
 | [`tools/audit.sh`](tools/audit.sh) | Answers the five questions from the talk against your own workflows | "Five questions for Monday" |
 | [`tools/pin.sh`](tools/pin.sh) | Resolves a tag to its commit SHA and rewrites `uses:` lines in place | — |
 | [`CHECKLIST.md`](CHECKLIST.md) | The five questions, with what a good answer looks like | — |
@@ -102,11 +102,17 @@ its substitutions in its own header, because every substitution is a place
 where what runs differs from what is taught. A green smoke run shows the
 skeleton works: the trigger, the permissions model, the job graph, the pinned
 actions, the artifact handoff between jobs, the checksum verification. It shows
-nothing about the substituted lines, which were never real. One example has no
-runnable copy at all — `labeler.yml` would mean granting `pull-requests: write`
-on a `pull_request_target` trigger in this repository, which is exactly the
-thing [`03`](examples/03-quarantine-untrusted-triggers) asks you to think twice
-about.
+nothing about the substituted lines, which were never real.
+
+Two example files have no runnable copy at all, both because running them here
+would mean granting this repository a capability to make a point.
+`labeler.yml` would need `pull-requests: write` on a `pull_request_target`
+trigger, which is exactly the thing
+[`03`](examples/03-quarantine-untrusted-triggers) asks you to think twice
+about. `attest-provenance.yml` would need `attestations: write` and would
+record real signed attestations against this repository for an artifact that
+is a placeholder. Both are still parsed, linted, and hydrated on every push;
+only their execution is skipped.
 
 ## What this does and does not buy you
 

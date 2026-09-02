@@ -21,6 +21,36 @@ moment.
   earliest signal available and it is how the tj-actions compromise was
   spotted.
 
+## Letting your consumers do the same
+
+Everything above is about what you pull in. The other direction is making your
+own releases checkable by the people who depend on you.
+
+`attest-provenance.yml` uses
+[`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
+to sign a statement about an artifact: this file, with this digest, was
+produced by this workflow, in this repository, at this commit. A consumer
+checks it with:
+
+```bash
+gh attestation verify dist/app.tar.gz --repo <owner>/<repo>
+```
+
+Two things about the shape of that file are deliberate.
+
+**The signing job runs no build.** `id-token: write` and `attestations: write`
+are the ability to sign things as you. In that file they live in a job that
+downloads an artifact and attests it, nowhere near `npm ci`. This is
+[`04`](../04-scope-secrets-and-runners) applied to a credential that is not a
+secret and does not appear in any settings page.
+
+**The split does not make the artifact trustworthy.** If the build job is
+compromised it produces a poisoned artifact, and the attest job faithfully
+signs the poisoned artifact. What the split buys is narrower: third-party
+build code never holds the signing capability, so it cannot sign things of its
+own choosing later. That is worth having. It is not the same as integrity, and
+the next section is why.
+
 ## The honest limit
 
 TanStack, May 2026, is the case that bounds this advice. An attacker poisoned
