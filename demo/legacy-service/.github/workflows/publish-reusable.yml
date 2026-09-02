@@ -1,0 +1,19 @@
+# Inert demo fixture - see demo/legacy-service/README.md. Never runs.
+#
+# The workflow that `release.yml` calls with `secrets: inherit`. It needs one
+# secret. It is handed all of them.
+name: publish
+on:
+  workflow_call:
+    secrets:
+      NPM_TOKEN:
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

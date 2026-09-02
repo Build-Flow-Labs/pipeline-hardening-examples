@@ -1,0 +1,15 @@
+# Inert demo fixture - see demo/legacy-service/README.md. Never runs.
+#
+# The workflows above reference this by a local path, which looks safe and
+# is skipped by anything that only reads .github/workflows. The movable tag
+# is in here.
+name: setup toolchain
+description: Install the toolchain this project builds with.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - uses: some-vendor/cache-restore@v1
+      shell: bash

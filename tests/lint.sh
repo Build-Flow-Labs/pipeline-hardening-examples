@@ -15,10 +15,15 @@ fail=0
 ok()  { printf '  ok    %s\n' "$*"; }
 bad() { printf '  FAIL  %s\n' "$*"; fail=1; }
 
-# Some YAML in this repository is deliberately not a workflow. A Dependabot
-# config lives at .github/dependabot.yml and has an entirely different schema,
-# so actionlint rejects it as a matter of course. It gets parsed, not linted.
-is_workflow() { [ "$(basename "$1")" != "dependabot.yml" ]; }
+# Some YAML here is deliberately not a workflow. A Dependabot config and a
+# composite action each have an entirely different schema, so actionlint
+# rejects them as a matter of course. They get parsed, not linted.
+is_workflow() {
+  case "$(basename "$1")" in
+    dependabot.yml|action.yml|action.yaml) return 1 ;;
+    *) return 0 ;;
+  esac
+}
 
 # Files where actionlint SHOULD report something, with the text it must
 # report. The 'before' examples are deliberately unsafe and the finding is
@@ -28,11 +33,22 @@ expected_finding() {
   case "$1" in
     examples/03-quarantine-untrusted-triggers/before.yml)
       printf '%s' '"github.event.pull_request.title" is potentially untrusted' ;;
+
+    # The demo fixture is deliberately unsafe for the same reason.
+    demo/legacy-service/.github/workflows/pr-labeler.yml)
+      printf '%s' '"github.event.pull_request.title" is potentially untrusted' ;;
+
+    # An artefact of nesting a pretend repository inside a real one, not a
+    # defect in the fixture: actionlint resolves a local reusable-workflow
+    # path against the root of THIS repository, where that file does not
+    # exist. The path is correct from legacy-service's own point of view.
+    demo/legacy-service/.github/workflows/release.yml)
+      printf '%s' 'could not read reusable workflow file' ;;
     *) printf '' ;;
   esac
 }
 
-mapfile -t YAML_FILES < <(find examples .github -name '*.yml' -o -name '*.yaml' | sort)
+mapfile -t YAML_FILES < <(find examples .github demo -name '*.yml' -o -name '*.yaml' | sort)
 
 echo "1. YAML parses as a mapping"
 for f in "${YAML_FILES[@]}"; do
@@ -60,7 +76,7 @@ if ! command -v actionlint >/dev/null 2>&1; then
   bad "actionlint not on PATH (run ./tests/install-actionlint.sh)"
 else
   for f in "${YAML_FILES[@]}"; do
-    is_workflow "$f" || { ok "$f (Dependabot config, not a workflow - parsed above)"; continue; }
+    is_workflow "$f" || { ok "$f (not a workflow schema - parsed above)"; continue; }
 
     out=$(actionlint -no-color -oneline "$f" 2>&1)
     count=$(printf '%s' "$out" | grep -c . )
@@ -73,7 +89,7 @@ else
         bad "$f - expected exactly the one known finding, got $count"
         printf '%s\n' "$out" | sed 's/^/        /'
       else
-        ok "$f (deliberately unsafe; expected finding still reported)"
+        ok "$f (known finding still reported)"
       fi
     elif [ "$count" -eq 0 ]; then
       ok "$f"

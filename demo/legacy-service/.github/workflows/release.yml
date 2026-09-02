@@ -1,0 +1,14 @@
+# Inert demo fixture - see demo/legacy-service/README.md. Never runs.
+#
+# `secrets: inherit` hands the called workflow every secret the repository
+# holds. It is one word, and it is the broadest scope available.
+name: release
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish-reusable.yml
+    secrets: inherit
