@@ -1,0 +1,77 @@
+# The talk demo, as a button.
+#
+# Actions tab -> "demo" -> Run workflow. It runs the three acts from DEMO.md
+# and writes the output to the run summary, so the whole thing can be shown
+# from a browser with nothing typed at a terminal.
+#
+# Trigger it before you go on stage and show the finished summary, or click it
+# live if you would rather. It takes about twenty seconds.
+name: demo
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Act 1 - the problem
+        run: |
+          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          {
+            echo "## Act 1 — the problem"
+            echo
+            echo 'A fictional project carrying all five exposures. Every question has'
+            echo 'something to say. The one to pause on is the composite action under'
+            echo '`.github/actions/` — a workflow-only scan never opens it.'
+            echo
+            echo '```console'
+            echo '$ ./tools/audit.sh demo/legacy-service'
+            ./tools/audit.sh demo/legacy-service
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Act 2 - the same command on this repository
+        run: |
+          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          {
+            echo "## Act 2 — the same command, on this repository"
+            echo
+            echo 'All five clean. Checked on every push, so the advice and the practice'
+            echo 'cannot drift apart quietly.'
+            echo
+            echo '```console'
+            echo '$ ./tools/audit.sh .'
+            ./tools/audit.sh .
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Act 3 - how you get from one to the other
+        run: |
+          set -euo pipefail
+          cp demo/legacy-service/.github/workflows/ci.yml /tmp/ci.yml
+          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          {
+            echo "## Act 3 — how you get from one to the other"
+            echo
+            echo 'The two references that did **not** change are the interesting ones.'
+            echo
+            echo '```console'
+            echo '$ ./tools/pin.sh --write /tmp/ci.yml'
+            ./tools/pin.sh --write /tmp/ci.yml 2>&1 || true
+            echo
+            echo '$ grep uses: /tmp/ci.yml'
+            grep 'uses:' /tmp/ci.yml
+            echo '```'
+            echo
+            echo '- `some-vendor/coverage-reporter@v3` does not exist, so it was left'
+            echo '  alone and reported. It does not guess.'
+            echo '- `./.github/actions/setup` is local, so there was nothing to pin —'
+            echo '  and its own movable tags are still there. Pinning the workflow did'
+            echo '  not fix the action.'
+          } >> "$GITHUB_STEP_SUMMARY"
