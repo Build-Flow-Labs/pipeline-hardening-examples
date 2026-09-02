@@ -204,6 +204,35 @@ else
   bad "expected exactly one injection finding, got $n_shell (env: indirection is the fix, not the bug)"
 fi
 
+# --- the demo fixture ------------------------------------------------------
+#
+# DEMO.md walks through tools/audit.sh against demo/legacy-service, and the
+# whole point is that every question has something to say. A demo that has
+# quietly stopped demonstrating is worse than no demo, and it would be found
+# out on stage rather than here.
+out=$(./tools/audit.sh demo/legacy-service)
+
+echo
+echo "5. The demo fixture still demonstrates all five questions"
+has "$out" "Q1 movable tags, in workflows and in a composite action" \
+    "mutable reference(s). See examples/01-pin-actions."
+has "$out" "Q1 reaches inside the local composite action" "some-vendor/cache-restore@v1"
+has "$out" "Q2 no permissions block anywhere"            "no permissions: block anywhere"
+has "$out" "Q3 the pwn request"                          "untrusted trigger AND checks out fork code"
+has "$out" "Q3 the PR title reaching a shell"            "interpolates attacker-controlled text into a shell"
+has "$out" "Q4 four credentials above step level"        "4 secret reference(s) above step level"
+has "$out" "Q4 secrets: inherit"                         "the called workflow gets every secret"
+has "$out" "Q4 the self-hosted runner"                   "Self-hosted runners:"
+has "$out" "Q5 ties back to the movable references"      "would change silently."
+
+# The fixture must stay inert. It is only safe to keep a deliberate pwn
+# request in a public repository because GitHub will not run it from here.
+if [ -e ".github/workflows/pr-labeler.yml" ]; then
+  bad "the demo pwn request has been copied into .github/workflows, where it WOULD run"
+else
+  ok "the demo workflows are nested under demo/, where GitHub will not run them"
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then echo "audit.sh tests passed"; else echo "audit.sh tests FAILED"; fi
 exit "$fail"

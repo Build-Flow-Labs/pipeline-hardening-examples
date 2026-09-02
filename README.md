@@ -34,7 +34,14 @@ cd pipeline-hardening-examples
 ```
 
 That prints a first-pass answer to the five questions for a repository you
-own. It is a heuristic, not a parser (see the caveat in `tools/audit.sh`), so
+own. To see it find something rather than come back clean, point it at the
+worked-example project that ships with this repository:
+
+```bash
+./tools/audit.sh demo/legacy-service
+```
+
+[`DEMO.md`](DEMO.md) walks through that as a runbook. It is a heuristic, not a parser (see the caveat in `tools/audit.sh`), so
 treat the output as a place to start looking rather than a verdict.
 
 ## On the SHAs in these examples
