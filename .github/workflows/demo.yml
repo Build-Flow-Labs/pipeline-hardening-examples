@@ -43,13 +43,18 @@ jobs:
           {
             echo "## Act 1 — a project that has never been asked"
             echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| [**Can anything change without a commit?**]($ex/01-pin-actions) | Yes — $mut movable tags. Two are inside a composite action. |"
-            echo "| [**What could the build token do?**]($ex/02-least-privilege-tokens) | Nobody can tell. $noperm workflows declare nothing. |"
-            echo "| [**Who can influence the build?**]($ex/03-quarantine-untrusted-triggers) | Any fork. Its code runs with our token. |"
-            echo "| [**Which secrets are exposed?**]($ex/04-scope-secrets-and-runners) | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
-            echo "| [**Would a moved tag be noticed?**]($ex/05-verify-what-you-consume) | No. |"
+            echo "|  | Question | \`demo/legacy-service\` |"
+            echo "|:--:|---|---|"
+            echo "| ❌ | [**Can anything change without a commit?**]($ex/01-pin-actions) | Yes — $mut movable tags. Two are inside a composite action. |"
+            echo "| ❌ | [**What could the build token do?**]($ex/02-least-privilege-tokens) | Nobody can tell. $noperm workflows declare nothing. |"
+            echo "| ❌ | [**Who can influence the build?**]($ex/03-quarantine-untrusted-triggers) | Any fork. Its code runs with our token. |"
+            echo "| ❌ | [**Which secrets are exposed?**]($ex/04-scope-secrets-and-runners) | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
+            echo "| ❌ | [**Would a moved tag be noticed?**]($ex/05-verify-what-you-consume) | No. |"
+            echo
+            echo "> [!WARNING]"
+            echo "> Two of those tags are in \`.github/actions/setup/action.yml\`, which"
+            echo "> \`ci.yml\` references as a local path. Anything that reads only"
+            echo "> \`.github/workflows\` never opens it."
             echo
             echo "<details><summary>Full output</summary>"
             echo
@@ -75,13 +80,13 @@ jobs:
           {
             echo "## Act 2 — the same command, on this repository"
             echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| **Can anything change without a commit?** | No. Every step is pinned to a commit. |"
-            echo "| **What could the build token do?** | Read only, and each job says so in the file. |"
-            echo "| **Who can influence the build?** | Nobody. No untrusted triggers. |"
-            echo "| **Which secrets are exposed?** | None above step level. |"
-            echo "| **Would a moved tag be noticed?** | A tag cannot move anything here. |"
+            echo "|  | Question | this repository |"
+            echo "|:--:|---|---|"
+            echo "| ✅ | **Can anything change without a commit?** | No. Every step is pinned to a commit. |"
+            echo "| ✅ | **What could the build token do?** | Read only, and each job says so in the file. |"
+            echo "| ✅ | **Who can influence the build?** | Nobody. No untrusted triggers. |"
+            echo "| ✅ | **Which secrets are exposed?** | None above step level. |"
+            echo "| ✅ | **Would a moved tag be noticed?** | A tag cannot move anything here. |"
             echo
             echo "<details><summary>Full output</summary>"
             echo
@@ -105,7 +110,7 @@ jobs:
             echo
             echo "\`./tools/pin.sh --write\` resolved $n references to commits. The two it left alone:"
             echo
-            echo "| | |"
+            echo "| Left alone | Why |"
             echo "|---|---|"
             echo "| \`some-vendor/coverage-reporter@v3\` | Does not exist. It reports; it does not guess. |"
             echo "| \`./.github/actions/setup\` | A local path — nothing to pin. Its own movable tags are still there. |"
