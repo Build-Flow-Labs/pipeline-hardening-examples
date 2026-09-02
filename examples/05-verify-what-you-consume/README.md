@@ -63,4 +63,4 @@ came from a particular build. It cannot attest that the build was
 trustworthy.
 
 Verification raises the cost of an attack considerably. It does not make you
-immune, and it is worth saying that out loud rather than implying otherwise.
+immune.
