@@ -21,6 +21,8 @@ Everything here is configuration. None of it requires buying anything.
 | [`tools/audit.sh`](tools/audit.sh) | Answers the five questions from the talk against your own workflows | "Five questions for Monday" |
 | [`tools/pin.sh`](tools/pin.sh) | Resolves a tag to its commit SHA and rewrites `uses:` lines in place | — |
 | [`CHECKLIST.md`](CHECKLIST.md) | The five questions, with what a good answer looks like | — |
+| [`DEMO.md`](DEMO.md) | A runbook for showing the audit finding something, live | — |
+| [`MAINTAINING.md`](MAINTAINING.md) | What CI checks, and the invariants it enforces | — |
 
 Each example directory has a `before.yml`, an `after.yml`, and a README
 explaining what changed and why.
@@ -89,6 +91,11 @@ running `pin.sh` — and checks the result still resolves upstream and still
 lints. That is the check that notices a version comment going stale. Separately,
 `tools/materialise.sh` generates runnable copies into `.github/workflows`, so
 the shapes execute on real infrastructure.
+
+Those copies run weekly and on demand rather than on every push — they exist
+to show the shapes execute on real infrastructure, which a weekly run answers
+just as well, and it keeps the Actions tab readable. Everything that can go
+wrong in between is caught on every push by the checks above.
 
 Those copies are not the examples, and the difference matters. Each one lists
 its substitutions in its own header, because every substitution is a place

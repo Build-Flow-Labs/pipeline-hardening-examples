@@ -88,6 +88,13 @@ build_one() { # build_one <source> <dest>
 
 # In a sed replacement '&' means the whole match, so it has to be escaped
 # there. The description is written out plainly for the generated header.
+# The smoke copies run weekly and on demand rather than on every push. They
+# exist to show the shapes execute on real infrastructure, which a weekly run
+# answers just as well, and it keeps the Actions tab readable. ci.yml still
+# lints, hydrates and drift-checks these files on every push.
+SMOKE_TRIGGER='on:\n  workflow_dispatch:\n  schedule:\n    - cron: "17 6 * * 1"'
+SMOKE_TRIGGER_DESC='runs weekly and on demand rather than on every push; ci.yml still checks this file on every push'
+
 FIXTURE_TEST_SED='cd tests/fixture \&\& npm ci \&\& npm test'
 FIXTURE_BUILD_SED='cd tests/fixture \&\& npm ci \&\& npm run build'
 FIXTURE_TEST_DESC='npm ci && npm test runs against tests/fixture, a real but trivial project'
@@ -101,6 +108,7 @@ f="$tmpdir/smoke-01-pin-actions.yml"
 build_one examples/01-pin-actions/after.yml "$f"
 rewrite "$f" '^name: build$' 's/^name: build$/name: smoke 01 - pin actions/' \
   "workflow renamed so it is distinguishable in the Actions tab"
+rewrite "$f" '^on: \[push\]$' "s|^on: \[push\]$|$SMOKE_TRIGGER|" "$SMOKE_TRIGGER_DESC"
 rewrite "$f" 'npm ci && npm test' "s|npm ci && npm test|$FIXTURE_TEST_SED|" \
   "$FIXTURE_TEST_DESC"
 header examples/01-pin-actions/after.yml "$f" \
@@ -111,6 +119,7 @@ f="$tmpdir/smoke-02-least-privilege-tokens.yml"
 build_one examples/02-least-privilege-tokens/after.yml "$f"
 rewrite "$f" '^name: build$' 's/^name: build$/name: smoke 02 - least privilege tokens/' \
   "workflow renamed so it is distinguishable in the Actions tab"
+rewrite "$f" '^on: \[push\]$' "s|^on: \[push\]$|$SMOKE_TRIGGER|" "$SMOKE_TRIGGER_DESC"
 rewrite "$f" 'npm ci && npm test' "s|npm ci && npm test|$FIXTURE_TEST_SED|" \
   "$FIXTURE_TEST_DESC"
 rewrite "$f" '\./scripts/publish-release\.sh' \
@@ -124,8 +133,9 @@ f="$tmpdir/smoke-03-quarantine-untrusted-triggers.yml"
 build_one examples/03-quarantine-untrusted-triggers/after.yml "$f"
 rewrite "$f" '^name: pr-check$' 's/^name: pr-check$/name: smoke 03 - quarantine untrusted triggers/' \
   "workflow renamed so it is distinguishable in the Actions tab"
-rewrite "$f" '^  pull_request:' 's/^  pull_request:(.*)$/  pull_request:\1\n  push:/' \
-  "push added alongside pull_request so the copy runs without needing a PR; pull_request is kept, since not being pull_request_target is the lesson"
+rewrite "$f" '^  pull_request:' \
+  's/^  pull_request:(.*)$/  pull_request:\1\n  workflow_dispatch:\n  schedule:\n    - cron: "17 6 * * 1"/' \
+  "workflow_dispatch and a weekly schedule added alongside pull_request so the copy runs without needing a PR; pull_request itself is kept, since not being pull_request_target is the lesson"
 rewrite "$f" 'npm ci && npm run build' "s|npm ci && npm run build|$FIXTURE_BUILD_SED|" \
   "$FIXTURE_BUILD_DESC"
 header examples/03-quarantine-untrusted-triggers/after.yml "$f" \
@@ -136,6 +146,7 @@ f="$tmpdir/smoke-04-scope-secrets-and-runners.yml"
 build_one examples/04-scope-secrets-and-runners/after.yml "$f"
 rewrite "$f" '^name: build-and-deploy$' 's/^name: build-and-deploy$/name: smoke 04 - scope secrets and runners/' \
   "workflow renamed so it is distinguishable in the Actions tab"
+rewrite "$f" '^on: \[push\]$' "s|^on: \[push\]$|$SMOKE_TRIGGER|" "$SMOKE_TRIGGER_DESC"
 rewrite "$f" 'uses: some-org/some-build-action@' \
   's|^([[:space:]]*)- uses: some-org/some-build-action@.*$|\1- run: echo "stub - the third-party build action in the example is fictional"|' \
   "the fictional third-party action is stubbed with an echo; it exists nowhere and cannot be pinned"
@@ -151,6 +162,7 @@ f="$tmpdir/smoke-05-verify-what-you-consume.yml"
 build_one examples/05-verify-what-you-consume/verify-download.yml "$f"
 rewrite "$f" '^name: install-tooling$' 's/^name: install-tooling$/name: smoke 05 - verify what you consume/' \
   "workflow renamed so it is distinguishable in the Actions tab"
+rewrite "$f" '^on: \[push\]$' "s|^on: \[push\]$|$SMOKE_TRIGGER|" "$SMOKE_TRIGGER_DESC"
 rewrite "$f" 'TOOL_VERSION: "1\.9\.2"' \
   "s|TOOL_VERSION: \"1\\.9\\.2\"|TOOL_VERSION: \"$ACTIONLINT_VERSION\"|" \
   "the illustrative tool is replaced with a real download (actionlint $ACTIONLINT_VERSION), since example.com serves nothing"
