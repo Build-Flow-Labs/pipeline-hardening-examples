@@ -183,7 +183,7 @@ done
 # repository. It is the broadest form there is and looks like nothing.
 inherit=0
 for f in "${FILES[@]}"; do
-  n=$(grep -cE '^[[:space:]]*secrets:[[:space:]]*inherit[[:space:]]*$' "$f" 2>/dev/null)
+  n=$(grep -cE '^[[:space:]]*secrets:[[:space:]]*inherit[[:space:]]*(#.*)?$' "$f" 2>/dev/null)
   if [ "${n:-0}" -gt 0 ]; then
     [ "$inherit" -eq 0 ] && echo "   ${R}secrets: inherit${N} - the called workflow gets every secret in the repository:"
     echo "      $(rel "$f") - $n job(s)"
@@ -215,7 +215,7 @@ done
 unknown=$(for f in "${FILES[@]}"; do
     grep -hE '^[[:space:]]*runs-on:' "$f" 2>/dev/null
   done \
-  | sed -E 's/^[[:space:]]*runs-on:[[:space:]]*//; s/[[:space:]]*$//' \
+  | sed -E 's/^[[:space:]]*runs-on:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]*$//' \
   | grep -vE '^\[?["'"'"']?(ubuntu|windows|macos)-[A-Za-z0-9._-]+["'"'"']?\]?$' \
   | grep -vE 'self-hosted|\$\{\{' \
   | sort -u)

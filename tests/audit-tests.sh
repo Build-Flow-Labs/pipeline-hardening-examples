@@ -149,6 +149,24 @@ jobs:
       - run: echo hello
 YAML
 
+# A trailing comment on runs-on: is ordinary style, and read naively it makes
+# a standard runner label look like a custom one.
+cat > "$tmp/real/.github/workflows/commented.yml" <<'YAML'
+name: commented
+on: [push]
+permissions: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest        # ephemeral, discarded after the job
+    permissions:
+      contents: read
+    steps:
+      - run: echo hello
+  call:
+    uses: ./.github/workflows/other.yml
+    secrets: inherit              # every secret, with a comment after it
+YAML
+
 cat > "$tmp/real/.github/actions/local/action.yml" <<'YAML'
 name: local composite
 runs:
@@ -170,6 +188,9 @@ has   "$out" "a genuinely movable tag is still reported"        "some-org/some-a
 has   "$out" "a mutable ref inside a composite action is found" "third-party/action@v3"
 has   "$out" "composite actions are counted in the header"      "composite action(s)"
 has   "$out" "secrets: inherit is reported"                     "secrets: inherit"
+has   "$out" "secrets: inherit is found with a comment after it"  "commented.yml"
+lacks "$out" "a commented runs-on: is not mistaken for a custom label" \
+      "ubuntu-latest        #"
 has   "$out" "issue_comment counts as an untrusted trigger"     "comment-trigger.yml"
 has   "$out" "interpolation into a run: block is reported"      "interpolates attacker-controlled text into a shell"
 
