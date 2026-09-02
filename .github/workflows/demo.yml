@@ -1,17 +1,13 @@
 # The talk demo, as a button.
 #
-# Actions tab -> "demo" -> Run workflow. It runs the three acts from DEMO.md
-# and writes them to the run summary, so the whole thing can be shown from a
-# browser with nothing typed at a terminal.
+# Actions tab -> "demo" -> Run workflow. Each act is a scorecard: the five
+# questions in plain English, with the raw terminal output collapsed
+# underneath for anyone who wants the evidence.
 #
-# Each act leads with the finding and keeps the raw output in a collapsed
-# <details>, because a 56-line terminal dump above the fold is two scrolls
-# away from the point it is making.
-#
-# The headline lines are grepped out of the real output rather than written
-# here, so they cannot drift from what the tool actually says. If a grep stops
-# matching, the step fails loudly instead of quietly printing nothing -
-# tests/audit-tests.sh asserts every one of these strings on every push.
+# The numbers in the tables are pulled out of the real audit run rather than
+# written here, and the qualitative findings are asserted before the table is
+# printed. If the tool stops reporting one of them the step fails, so the
+# page can never claim something the audit did not actually say.
 name: demo
 on:
   workflow_dispatch:
@@ -30,56 +26,68 @@ jobs:
         run: |
           set -euo pipefail
           out=$(./tools/audit.sh demo/legacy-service)
-          # shellcheck disable=SC2016  # $ and backticks below are literal output
+
+          mut=$(printf '%s\n' "$out" | grep -oE '[0-9]+ mutable reference' | head -1 | grep -oE '[0-9]+')
+          noperm=$(printf '%s\n' "$out" | grep -c 'no permissions: block anywhere')
+          sec=$(printf '%s\n' "$out" | grep -oE '[0-9]+ secret reference' | head -1 | grep -oE '[0-9]+')
+
+          # Fail rather than print a claim the audit did not make.
+          printf '%s\n' "$out" | grep -q 'untrusted trigger AND checks out fork code'
+          printf '%s\n' "$out" | grep -q 'gets every secret in the repository'
+          printf '%s\n' "$out" | grep -q 'Self-hosted runners:'
+          printf '%s\n' "$out" | grep -q 'actions/setup/action.yml'
+
           {
-            echo "## Act 1 — the problem"
+            echo "## Act 1 — a project that has never been asked"
             echo
-            echo 'A fictional project carrying all five exposures. What the audit finds:'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Can anything change without a commit?** | Yes — $mut movable tags. Two are inside a composite action. |"
+            echo "| **What could the build token do?** | Nobody can tell. $noperm workflows declare nothing. |"
+            echo "| **Who can influence the build?** | Any fork. Its code runs with our token. |"
+            echo "| **Which secrets are exposed?** | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
+            echo "| **Would a moved tag be noticed?** | No. |"
             echo
-            echo '```'
-            printf '%s\n' "$out" | grep -E 'actions/setup/action\.yml|setup-node@v4|cache-restore@|mutable reference\(s\)\.|workflow\(s\) with no declaration|untrusted trigger AND|interpolates attacker|secret reference\(s\) above|gets every secret|Self-hosted runners:'
-            echo '```'
-            echo
-            echo 'The one to pause on is `.github/actions/setup/action.yml`. `ci.yml`'
-            echo 'references it as `./.github/actions/setup` — a local path, which looks'
-            echo 'safe and is the one `uses:` line you would skip over. Two movable tags'
-            echo 'are one file further in. A repository can look fully pinned and not be.'
-            echo
-            echo '<details><summary>Full output</summary>'
+            echo "<details><summary>Full output</summary>"
             echo
             echo '```console'
             echo '$ ./tools/audit.sh demo/legacy-service'
             printf '%s\n' "$out"
             echo '```'
             echo
-            echo '</details>'
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Act 2 - the same command on this repository
         run: |
           set -euo pipefail
           out=$(./tools/audit.sh .)
-          # shellcheck disable=SC2016  # $ and backticks below are literal output
+
+          printf '%s\n' "$out" | grep -q 'None found - every third-party step is SHA-pinned'
+          printf '%s\n' "$out" | grep -q 'Every workflow declares its permissions'
+          printf '%s\n' "$out" | grep -q 'No untrusted-context triggers'
+          printf '%s\n' "$out" | grep -q 'No broadly scoped secret definitions found'
+          printf '%s\n' "$out" | grep -q 'Pinned references cannot change without a commit'
+
           {
             echo "## Act 2 — the same command, on this repository"
             echo
-            echo 'Same tool, same five questions, thirty seconds later:'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Can anything change without a commit?** | No. Every step is pinned to a commit. |"
+            echo "| **What could the build token do?** | Read only, and each job says so in the file. |"
+            echo "| **Who can influence the build?** | Nobody. No untrusted triggers. |"
+            echo "| **Which secrets are exposed?** | None above step level. |"
+            echo "| **Would a moved tag be noticed?** | A tag cannot move anything here. |"
             echo
-            echo '```'
-            printf '%s\n' "$out" | grep -E 'None found|Every workflow declares|No untrusted-context|No broadly scoped|Pinned references cannot'
-            echo '```'
-            echo
-            echo 'Checked on every push, so the advice and the practice cannot drift'
-            echo 'apart quietly.'
-            echo
-            echo '<details><summary>Full output</summary>'
+            echo "<details><summary>Full output</summary>"
             echo
             echo '```console'
             echo '$ ./tools/audit.sh .'
             printf '%s\n' "$out"
             echo '```'
             echo
-            echo '</details>'
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Act 3 - how you get from one to the other
@@ -87,25 +95,19 @@ jobs:
           set -euo pipefail
           cp demo/legacy-service/.github/workflows/ci.yml /tmp/ci.yml
           pinned=$(./tools/pin.sh --write /tmp/ci.yml 2>&1 || true)
-          # shellcheck disable=SC2016  # $ and backticks below are literal output
+          n=$(printf '%s\n' "$pinned" | grep -oE 'pinned [0-9]+ reference' | grep -oE '[0-9]+')
+
           {
             echo "## Act 3 — how you get from one to the other"
             echo
-            echo 'The two references that did **not** change are the interesting ones:'
+            echo "\`./tools/pin.sh --write\` resolved $n references to commits. The two it left alone:"
             echo
-            echo '```'
-            grep 'uses:' /tmp/ci.yml | grep -vE '@[0-9a-f]{40}'
-            echo '```'
+            echo "| | |"
+            echo "|---|---|"
+            echo "| \`some-vendor/coverage-reporter@v3\` | Does not exist. It reports; it does not guess. |"
+            echo "| \`./.github/actions/setup\` | A local path — nothing to pin. Its own movable tags are still there. |"
             echo
-            echo '- `some-vendor/coverage-reporter@v3` does not exist, so it was left'
-            echo '  alone and reported. It does not guess.'
-            echo '- `./.github/actions/setup` is local, so there was nothing to pin — and'
-            echo '  its own movable tags are still there. Pinning the workflow did not fix'
-            echo '  the action.'
-            echo
-            echo 'It uses `git ls-remote`, not the GitHub API: no token, no rate limit.'
-            echo
-            echo '<details><summary>Full output</summary>'
+            echo "<details><summary>Full output</summary>"
             echo
             echo '```console'
             echo '$ ./tools/pin.sh --write /tmp/ci.yml'
@@ -115,5 +117,5 @@ jobs:
             grep 'uses:' /tmp/ci.yml
             echo '```'
             echo
-            echo '</details>'
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
