@@ -1,0 +1,20 @@
+# Inert demo fixture - see demo/legacy-service/README.md. Never runs.
+#
+# The pwn request. pull_request_target supplies the base repository's token,
+# and this then checks out the fork's code and runs it.
+name: pr-labeler
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - run: npm ci && npm run lint
+
+      - run: echo "Triaging ${{ github.event.pull_request.title }}"

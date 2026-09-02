@@ -1,0 +1,31 @@
+# Inert demo fixture - see demo/legacy-service/README.md. Never runs.
+#
+# Ordinary-looking CI. Nothing here is unusual, which is the point: this is
+# roughly what a build looks like before anyone has asked the five questions.
+name: ci
+on: [push, pull_request]
+
+# Four credentials, visible to every step in every job below, including the
+# third-party actions.
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  test:
+    # Long-lived box. A job that lands here can leave something behind.
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: some-vendor/coverage-reporter@v3
+      - run: npm ci && npm test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v5
+      - run: ./scripts/build.sh
