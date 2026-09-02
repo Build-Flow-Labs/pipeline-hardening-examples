@@ -9,7 +9,7 @@
 #      two is wrong and this says so.
 #
 #   2. Against this repository: our own workflows must pass the five
-#      questions. This is the check PUBLISH.md asks for by hand, made
+#      questions. This is the check MAINTAINING.md promises, made
 #      continuous. A repository of hardening advice with a mutable action
 #      reference in its own CI is not a good look.
 set -uo pipefail
