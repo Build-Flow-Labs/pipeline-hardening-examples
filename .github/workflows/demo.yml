@@ -1,11 +1,17 @@
 # The talk demo, as a button.
 #
 # Actions tab -> "demo" -> Run workflow. It runs the three acts from DEMO.md
-# and writes the output to the run summary, so the whole thing can be shown
-# from a browser with nothing typed at a terminal.
+# and writes them to the run summary, so the whole thing can be shown from a
+# browser with nothing typed at a terminal.
 #
-# Trigger it before you go on stage and show the finished summary, or click it
-# live if you would rather. It takes about twenty seconds.
+# Each act leads with the finding and keeps the raw output in a collapsed
+# <details>, because a 56-line terminal dump above the fold is two scrolls
+# away from the point it is making.
+#
+# The headline lines are grepped out of the real output rather than written
+# here, so they cannot drift from what the tool actually says. If a grep stops
+# matching, the step fails loudly instead of quietly printing nothing -
+# tests/audit-tests.sh asserts every one of these strings on every push.
 name: demo
 on:
   workflow_dispatch:
@@ -22,56 +28,92 @@ jobs:
 
       - name: Act 1 - the problem
         run: |
-          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          set -euo pipefail
+          out=$(./tools/audit.sh demo/legacy-service)
+          # shellcheck disable=SC2016  # $ and backticks below are literal output
           {
             echo "## Act 1 — the problem"
             echo
-            echo 'A fictional project carrying all five exposures. Every question has'
-            echo 'something to say. The one to pause on is the composite action under'
-            echo '`.github/actions/` — a workflow-only scan never opens it.'
+            echo 'A fictional project carrying all five exposures. What the audit finds:'
+            echo
+            echo '```'
+            printf '%s\n' "$out" | grep -E 'actions/setup/action\.yml|setup-node@v4|cache-restore@|mutable reference\(s\)\.|workflow\(s\) with no declaration|untrusted trigger AND|interpolates attacker|secret reference\(s\) above|gets every secret|Self-hosted runners:'
+            echo '```'
+            echo
+            echo 'The one to pause on is `.github/actions/setup/action.yml`. `ci.yml`'
+            echo 'references it as `./.github/actions/setup` — a local path, which looks'
+            echo 'safe and is the one `uses:` line you would skip over. Two movable tags'
+            echo 'are one file further in. A repository can look fully pinned and not be.'
+            echo
+            echo '<details><summary>Full output</summary>'
             echo
             echo '```console'
             echo '$ ./tools/audit.sh demo/legacy-service'
-            ./tools/audit.sh demo/legacy-service
+            printf '%s\n' "$out"
             echo '```'
+            echo
+            echo '</details>'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Act 2 - the same command on this repository
         run: |
-          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          set -euo pipefail
+          out=$(./tools/audit.sh .)
+          # shellcheck disable=SC2016  # $ and backticks below are literal output
           {
             echo "## Act 2 — the same command, on this repository"
             echo
-            echo 'All five clean. Checked on every push, so the advice and the practice'
-            echo 'cannot drift apart quietly.'
+            echo 'Same tool, same five questions, thirty seconds later:'
+            echo
+            echo '```'
+            printf '%s\n' "$out" | grep -E 'None found|Every workflow declares|No untrusted-context|No broadly scoped|Pinned references cannot'
+            echo '```'
+            echo
+            echo 'Checked on every push, so the advice and the practice cannot drift'
+            echo 'apart quietly.'
+            echo
+            echo '<details><summary>Full output</summary>'
             echo
             echo '```console'
             echo '$ ./tools/audit.sh .'
-            ./tools/audit.sh .
+            printf '%s\n' "$out"
             echo '```'
+            echo
+            echo '</details>'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Act 3 - how you get from one to the other
         run: |
           set -euo pipefail
           cp demo/legacy-service/.github/workflows/ci.yml /tmp/ci.yml
-          # shellcheck disable=SC2016  # the $ and backticks are literal output
+          pinned=$(./tools/pin.sh --write /tmp/ci.yml 2>&1 || true)
+          # shellcheck disable=SC2016  # $ and backticks below are literal output
           {
             echo "## Act 3 — how you get from one to the other"
             echo
-            echo 'The two references that did **not** change are the interesting ones.'
+            echo 'The two references that did **not** change are the interesting ones:'
+            echo
+            echo '```'
+            grep 'uses:' /tmp/ci.yml | grep -vE '@[0-9a-f]{40}'
+            echo '```'
+            echo
+            echo '- `some-vendor/coverage-reporter@v3` does not exist, so it was left'
+            echo '  alone and reported. It does not guess.'
+            echo '- `./.github/actions/setup` is local, so there was nothing to pin — and'
+            echo '  its own movable tags are still there. Pinning the workflow did not fix'
+            echo '  the action.'
+            echo
+            echo 'It uses `git ls-remote`, not the GitHub API: no token, no rate limit.'
+            echo
+            echo '<details><summary>Full output</summary>'
             echo
             echo '```console'
             echo '$ ./tools/pin.sh --write /tmp/ci.yml'
-            ./tools/pin.sh --write /tmp/ci.yml 2>&1 || true
+            printf '%s\n' "$pinned"
             echo
             echo '$ grep uses: /tmp/ci.yml'
             grep 'uses:' /tmp/ci.yml
             echo '```'
             echo
-            echo '- `some-vendor/coverage-reporter@v3` does not exist, so it was left'
-            echo '  alone and reported. It does not guess.'
-            echo '- `./.github/actions/setup` is local, so there was nothing to pin —'
-            echo '  and its own movable tags are still there. Pinning the workflow did'
-            echo '  not fix the action.'
+            echo '</details>'
           } >> "$GITHUB_STEP_SUMMARY"
