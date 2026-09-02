@@ -40,14 +40,14 @@ exposures. Every question has something to say:
 | 4 | Four credentials above step level, `secrets: inherit`, and a self-hosted runner |
 | 5 | Ties back to question 1: those 8 references would change silently |
 
-The beat worth pausing on is the composite action. `ci.yml` references it as
+The composite action is the one to slow down on. `ci.yml` references it as
 `./.github/actions/setup`, which looks local and safe, and the movable tags are
 one file further in. A repository can look fully pinned and not be.
 
 > The workflows in `demo/legacy-service` never run. GitHub only executes
 > workflows in the repository's own `.github/workflows`, and these are nested
-> inside `demo/`. That is the only reason it is safe to keep a deliberate pwn
-> request in a public repository. `tests/audit-tests.sh` asserts they stay
+> inside `demo/`. Nothing there runs, which is why a deliberate pwn request
+> can sit in a public repository at all. `tests/audit-tests.sh` asserts they stay
 > there.
 
 ---
@@ -100,7 +100,7 @@ Three things happened, and the two failures are the interesting ones:
   and reported. It does not guess.
 - `./.github/actions/setup` is local, so there is nothing to pin. Its own
   movable tags are still there — pinning the workflow did not fix the action.
-  That is the honest limit of the tool, and worth saying.
+  Say that out loud. It is a real limit.
 
 It uses `git ls-remote`, not the GitHub API: no token, no rate limit.
 

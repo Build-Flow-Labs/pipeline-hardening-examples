@@ -48,8 +48,7 @@ secret and does not appear in any settings page.
 compromised it produces a poisoned artifact, and the attest job faithfully
 signs the poisoned artifact. What the split buys is narrower: third-party
 build code never holds the signing capability, so it cannot sign things of its
-own choosing later. That is worth having. It is not the same as integrity, and
-the next section is why.
+own choosing later. Useful, but not integrity. The next section says why.
 
 ## The honest limit
 

@@ -41,20 +41,20 @@ jobs:
           printf '%s\n' "$out" | grep -q 'actions/setup/action.yml'
 
           {
-            echo "## Act 1 — a project that has never been asked"
+            echo "## Act 1 — an ordinary build"
             echo
             echo "|  | Question | \`demo/legacy-service\` |"
             echo "|:--:|---|---|"
-            echo "| ❌ | [**Can anything change without a commit?**]($ex/01-pin-actions) | Yes — $mut movable tags. Two are inside a composite action. |"
-            echo "| ❌ | [**What could the build token do?**]($ex/02-least-privilege-tokens) | Nobody can tell. $noperm workflows declare nothing. |"
-            echo "| ❌ | [**Who can influence the build?**]($ex/03-quarantine-untrusted-triggers) | Any fork. Its code runs with our token. |"
+            echo "| ❌ | [**Can anything change without a commit?**]($ex/01-pin-actions) | $mut movable tags. Two are in a composite action. |"
+            echo "| ❌ | [**What could the build token do?**]($ex/02-least-privilege-tokens) | Unknown. $noperm workflows declare no permissions. |"
+            echo "| ❌ | [**Who can influence the build?**]($ex/03-quarantine-untrusted-triggers) | Any fork. Its code runs with the repo's token. |"
             echo "| ❌ | [**Which secrets are exposed?**]($ex/04-scope-secrets-and-runners) | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
             echo "| ❌ | [**Would a moved tag be noticed?**]($ex/05-verify-what-you-consume) | No. |"
             echo
             echo "> [!WARNING]"
-            echo "> Two of those tags are in \`.github/actions/setup/action.yml\`, which"
-            echo "> \`ci.yml\` references as a local path. Anything that reads only"
-            echo "> \`.github/workflows\` never opens it."
+            echo "> Two of those tags are in \`.github/actions/setup/action.yml\`."
+            echo "> \`ci.yml\` calls it by a local path, so a scan of \`.github/workflows\`"
+            echo "> alone never opens the file."
             echo
             echo "<details><summary>Full output</summary>"
             echo
@@ -82,11 +82,11 @@ jobs:
             echo
             echo "|  | Question | this repository |"
             echo "|:--:|---|---|"
-            echo "| ✅ | **Can anything change without a commit?** | No. Every step is pinned to a commit. |"
-            echo "| ✅ | **What could the build token do?** | Read only, and each job says so in the file. |"
-            echo "| ✅ | **Who can influence the build?** | Nobody. No untrusted triggers. |"
+            echo "| ✅ | **Can anything change without a commit?** | Every step is pinned to a commit. |"
+            echo "| ✅ | **What could the build token do?** | Read-only. Each job says so in the file. |"
+            echo "| ✅ | **Who can influence the build?** | No untrusted triggers. |"
             echo "| ✅ | **Which secrets are exposed?** | None above step level. |"
-            echo "| ✅ | **Would a moved tag be noticed?** | A tag cannot move anything here. |"
+            echo "| ✅ | **Would a moved tag be noticed?** | Moving a tag changes nothing here. |"
             echo
             echo "<details><summary>Full output</summary>"
             echo
@@ -102,26 +102,52 @@ jobs:
         run: |
           set -euo pipefail
           cp demo/legacy-service/.github/workflows/ci.yml /tmp/ci.yml
-          pinned=$(./tools/pin.sh --write /tmp/ci.yml 2>&1 || true)
-          n=$(printf '%s\n' "$pinned" | grep -oE 'pinned [0-9]+ reference' | grep -oE '[0-9]+')
+          ./tools/pin.sh --write /tmp/ci.yml 2>/dev/null
+
+          # pin.sh keeps the original as .bak, so the two files are a
+          # before-and-after of the same steps, line for line.
+          mapfile -t before < <(grep -oE 'uses: [^ ]+' /tmp/ci.yml.bak | sed 's/^uses: //')
+          mapfile -t after  < <(grep -oE 'uses: [^ ]+' /tmp/ci.yml   | sed 's/^uses: //')
+
+          # One row per distinct reference - the same action used by two steps is
+          # one fact, not two - and the successes grouped ahead of the two it
+          # could not pin, so the table reads as "what it did, then what it
+          # honestly could not".
+          declare -A seen=()
+          pinned_rows="" skipped_rows=""
+          for i in "${!before[@]}"; do
+            b="${before[$i]}"; a="${after[$i]}"
+            [ -n "${seen[$b]:-}" ] && continue
+            seen[$b]=1
+            if [ "$a" != "$b" ]; then
+              sha="${a#*@}"
+              pinned_rows+="| ✅ | \`$b\` | pinned to \`${sha:0:12}…\` |"$'\n'
+            elif [ "${b#./}" != "$b" ]; then
+              skipped_rows+="| ➖ | \`$b\` | Local path. Nothing to pin here, and its own tags are still movable. |"$'\n'
+            else
+              skipped_rows+="| ⚠️ | \`$b\` | No such repo. Skipped. |"$'\n'
+            fi
+          done
+          rows="$pinned_rows$skipped_rows"
 
           {
-            echo "## Act 3 — how you get from one to the other"
+            echo "## Act 3 — pinning it"
             echo
-            echo "\`./tools/pin.sh --write\` resolved $n references to commits. The two it left alone:"
+            echo "Running \`./tools/pin.sh --write\` on that project's \`ci.yml\`:"
             echo
-            echo "| Left alone | Why |"
-            echo "|---|---|"
-            echo "| \`some-vendor/coverage-reporter@v3\` | Does not exist. It reports; it does not guess. |"
-            echo "| \`./.github/actions/setup\` | A local path — nothing to pin. Its own movable tags are still there. |"
+            echo "|  | Reference | Result |"
+            echo "|:--:|---|---|"
+            printf '%s' "$rows"
+            echo
+            echo "> [!NOTE]"
+            echo "> Uses \`git ls-remote\`, so it needs no token and hits no rate limit."
+            echo "> Anything it cannot resolve is left alone and listed."
             echo
             echo "<details><summary>Full output</summary>"
             echo
             echo '```console'
-            echo '$ ./tools/pin.sh --write /tmp/ci.yml'
-            printf '%s\n' "$pinned"
-            echo
-            echo '$ grep uses: /tmp/ci.yml'
+            echo '$ ./tools/pin.sh --write ci.yml'
+            echo '$ grep uses: ci.yml'
             grep 'uses:' /tmp/ci.yml
             echo '```'
             echo
@@ -136,6 +162,4 @@ jobs:
             echo "---"
             echo
             echo "## $REPO_URL"
-            echo
-            echo "Five worked examples, two scripts, MIT. Copy anything without ceremony."
           } >> "$GITHUB_STEP_SUMMARY"

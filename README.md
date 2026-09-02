@@ -88,7 +88,7 @@ placeholders, one action in them is fictional, and they call scripts this
 repository does not contain. CI covers them two ways. It hydrates each one the
 way a reader would — reversing the placeholder using the version comment, then
 running `pin.sh` — and checks the result still resolves upstream and still
-lints. That is the check that notices a version comment going stale. Separately,
+lints. That check is what catches a version comment going stale. Separately,
 `tools/materialise.sh` generates runnable copies into `.github/workflows`, so
 the shapes execute on real infrastructure.
 
@@ -97,7 +97,7 @@ to show the shapes execute on real infrastructure, which a weekly run answers
 just as well, and it keeps the Actions tab readable. Everything that can go
 wrong in between is caught on every push by the checks above.
 
-Those copies are not the examples, and the difference matters. Each one lists
+Those copies are not the examples. Each one lists
 its substitutions in its own header, because every substitution is a place
 where what runs differs from what is taught. A green smoke run shows the
 skeleton works: the trigger, the permissions model, the job graph, the pinned

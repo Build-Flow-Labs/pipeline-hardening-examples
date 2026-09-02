@@ -17,7 +17,7 @@ keeps the Actions tab readable. Everything that can go wrong between Mondays —
 a stale version comment, a copy drifting from its example, a broken script —
 is caught on every push by `ci.yml` instead.
 
-One consequence worth knowing: **GitHub disables scheduled workflows in a
+One consequence: **GitHub disables scheduled workflows in a
 repository with no activity for 60 days.** If this repository goes quiet for a
 couple of months, the weekly smoke runs stop until someone re-enables them in
 the Actions tab. `ci.yml` is unaffected — it runs on pushes.
@@ -42,8 +42,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## Invariants
 
-These are enforced by tests, not by good intentions. If you change something
-and one of these fails, the test is probably right.
+Each one is enforced by a test. If you change something and one of them fails,
+the test is probably right.
 
 - **The SHAs in `examples/**/after.yml` are all zeros.** They are deliberately
   invalid so nobody copies a stale hash and ships it. `example-integrity.sh`
@@ -52,7 +52,7 @@ and one of these fails, the test is probably right.
   record of what the placeholder stands for, and `pin.sh` has nothing to work
   from without it.
 - **The `before.yml` examples keep failing actionlint.** The injectable pull
-  request title in `03/before.yml` is the lesson. `lint.sh` asserts the finding
+  request title in `03/before.yml` is the point of it. `lint.sh` asserts the finding
   is still reported, so tidying the example breaks the build.
 - **The demo workflows stay nested under `demo/`.** GitHub only runs workflows
   in the repository's own `.github/workflows`, which is the only reason a
