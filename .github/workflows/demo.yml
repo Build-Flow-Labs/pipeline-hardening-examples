@@ -23,8 +23,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Act 1 - the problem
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           set -euo pipefail
+          ex="$REPO_URL/tree/main/examples"
           out=$(./tools/audit.sh demo/legacy-service)
 
           mut=$(printf '%s\n' "$out" | grep -oE '[0-9]+ mutable reference' | head -1 | grep -oE '[0-9]+')
@@ -42,11 +45,11 @@ jobs:
             echo
             echo "| | |"
             echo "|---|---|"
-            echo "| **Can anything change without a commit?** | Yes — $mut movable tags. Two are inside a composite action. |"
-            echo "| **What could the build token do?** | Nobody can tell. $noperm workflows declare nothing. |"
-            echo "| **Who can influence the build?** | Any fork. Its code runs with our token. |"
-            echo "| **Which secrets are exposed?** | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
-            echo "| **Would a moved tag be noticed?** | No. |"
+            echo "| [**Can anything change without a commit?**]($ex/01-pin-actions) | Yes — $mut movable tags. Two are inside a composite action. |"
+            echo "| [**What could the build token do?**]($ex/02-least-privilege-tokens) | Nobody can tell. $noperm workflows declare nothing. |"
+            echo "| [**Who can influence the build?**]($ex/03-quarantine-untrusted-triggers) | Any fork. Its code runs with our token. |"
+            echo "| [**Which secrets are exposed?**]($ex/04-scope-secrets-and-runners) | All of them. $sec in a shared env, plus \`secrets: inherit\`. |"
+            echo "| [**Would a moved tag be noticed?**]($ex/05-verify-what-you-consume) | No. |"
             echo
             echo "<details><summary>Full output</summary>"
             echo
@@ -118,4 +121,16 @@ jobs:
             echo '```'
             echo
             echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Where to get it
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          {
+            echo "---"
+            echo
+            echo "## $REPO_URL"
+            echo
+            echo "Five worked examples, two scripts, MIT. Copy anything without ceremony."
           } >> "$GITHUB_STEP_SUMMARY"
