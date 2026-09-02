@@ -9,7 +9,7 @@
 #   - placeholder SHAs replaced with the real commit for the same version
 #   - the example's placeholder note is dropped, since this copy carries real SHAs
 #   - workflow renamed so it is distinguishable in the Actions tab
-#   - push added alongside pull_request so the copy runs without needing a PR; pull_request is kept, since not being pull_request_target is the lesson
+#   - workflow_dispatch and a weekly schedule added alongside pull_request so the copy runs without needing a PR; pull_request itself is kept, since not being pull_request_target is the lesson
 #   - npm ci && npm run build runs against tests/fixture, a real but trivial project
 #
 # A green run here shows: the env-indirection pattern for attacker-controlled text runs correctly, and a pull_request job builds with no secrets available
@@ -25,7 +25,9 @@
 name: smoke 03 - quarantine untrusted triggers
 on:
   pull_request:              # NOT pull_request_target
-  push:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
 
 permissions: {}
 

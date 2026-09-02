@@ -9,6 +9,7 @@
 #   - placeholder SHAs replaced with the real commit for the same version
 #   - the example's placeholder note is dropped, since this copy carries real SHAs
 #   - workflow renamed so it is distinguishable in the Actions tab
+#   - runs weekly and on demand rather than on every push; ci.yml still checks this file on every push
 #   - npm ci && npm test runs against tests/fixture, a real but trivial project
 #   - the release script is stubbed; that job is skipped on branch pushes anyway
 #
@@ -20,7 +21,10 @@
 # so, and only for what they need. A reader can now answer "what could this
 # token do?" from the file alone.
 name: smoke 02 - least privilege tokens
-on: [push]
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
 
 # Applies to every job unless a job overrides it.
 permissions: {}
