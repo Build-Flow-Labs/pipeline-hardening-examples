@@ -1,0 +1,35 @@
+# Who has to review a change before it merges.
+#
+# This file is only enforced if branch protection on main requires review from
+# code owners. Without that setting it is documentation, not a control.
+#
+# Both accounts below hold admin on the repository, so the ownership is the
+# same everywhere today. The paths are listed separately anyway: they are the
+# ones where a merged change alters what runs or what the examples teach, and
+# they should stay explicit if ownership is ever narrowed.
+#
+# GitHub applies the LAST matching pattern, so the specific rules below take
+# precedence over the catch-all.
+
+*                        @AminaEmenena @Dr-Cyber-OG
+
+# Runs with this repository's token.
+/.github/workflows/      @AminaEmenena @Dr-Cyber-OG
+/.github/dependabot.yml  @AminaEmenena @Dr-Cyber-OG
+
+# The scripts the README tells other people to run against their own repos.
+/tools/                  @AminaEmenena @Dr-Cyber-OG
+
+# The teaching material. The all-zero SHAs in the after.yml files are
+# deliberate and a real one must never be committed here.
+/examples/               @AminaEmenena @Dr-Cyber-OG
+
+# The deliberately unsafe fixture. It is inert only while it stays out of the
+# repository root, where GitHub would execute it.
+/demo/                   @AminaEmenena @Dr-Cyber-OG
+
+# The checks that enforce everything above.
+/tests/                  @AminaEmenena @Dr-Cyber-OG
+
+# This file.
+/.github/CODEOWNERS      @AminaEmenena @Dr-Cyber-OG
